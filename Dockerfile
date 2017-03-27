@@ -21,6 +21,6 @@ RUN set -e \
 
 COPY rootfs/ /
 
-CMD ["/usr/bin/garbd"]
+CMD ["/usr/local/bin/garbd-start.sh"]
 
 
