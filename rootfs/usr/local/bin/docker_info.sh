@@ -11,37 +11,40 @@ declare SERVICE_INSTANCE="${SERVICE_INSTANCE:=""}"
 declare CONTAINER_NAME="${CONTAINER_NAME:=""}"
 declare NODE_ADDRESS="${NODE_ADDRESS:=""}"
 
-function container_name(){
-    if [[ -z $CONTAINER_NAME ]] ; then
-        SERVICE_NAME="${SERVICE_NAME:="$(service_name)"}"
-        CONTAINER_NAME="${CONTAINER_NAME:="${SERVICE_NAME##*_}"}"
-    fi
-    echo "$CONTAINER_NAME"
+function service_hostname(){
+    while [[ -z "$SERVICE_HOSTNAME" ]] ; do
+        SERVICE_HOSTNAME="$(hostname -i | nslookup | awk -F'= ' 'NR==5 { print $2 }'| awk -F'.' '{print $1 "." $2}')"
+        if [[ -z "$SERVICE_HOSTNAME" ]] ; then
+	    echo "Waiting for dns..." >> &2
+       	    sleep 1;
+	    LOOP=$((LOOP + 1));
+        fi
+    done
+    echo "$SERVICE_HOSTNAME"
 }
 
 function service_name(){
     if [[ -z $SERVICE_NAME ]] ; then
-        SERVICE_NAME=$(hostname -i | nslookup | awk -F'= ' 'NR==5 { print $2 }'| awk -F'.' '{print $1}')
+        SERVICE_HOSTNAME="$(service_hostname)"
+        SERVICE_NAME="${SERVICE_NAME%%.*}"
     fi
     echo "$SERVICE_NAME"
 }
 
-function service_hostname(){
-    if [[ -z $SERVICE_HOSTNAME ]] ; then
-       SERVICE_HOSTNAME=$(hostname -i | nslookup | awk -F'= ' 'NR==5 { print $2 }'| awk -F'.' '{print $1 "." $2}')
-    fi
-
-    echo "$SERVICE_HOSTNAME"
-}
-
 function service_instance(){
     if [[ -z $SERVICE_INSTANCE ]] ; then
-        INTEGER=$(hostname -i | nslookup | awk -F'= ' 'NR==5 { print $2 }'| awk -F'.' '{print $2}')
-        if [[ $INTEGER =~ ^-?[0-9]+$ ]]; then
-           SERVICE_INSTANCE=$INTEGER
-        fi
+        SERVICE_NAME="$(service_name)"
+        SERVICE_INSTANCE="${SERVICE_NAME##*.}"
     fi
     echo "$SERVICE_INSTANCE"
+}
+
+function container_name(){
+    if [[ -z $CONTAINER_NAME ]] ; then
+        SERVICE_NAME="$(service_name)"
+        CONTAINER_NAME="${SERVICE_NAME##*_}"
+    fi
+    echo "$CONTAINER_NAME"
 }
 
 function node_address(){
