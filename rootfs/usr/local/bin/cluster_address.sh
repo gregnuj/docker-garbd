@@ -26,12 +26,12 @@ fi
 # by `docker service update <service>` or on a full cluster power loss
 while [[ -z "$CLUSTER_ADDRESS" ]]; do
     CLUSTER_MEMBERS="$(getent hosts tasks.${SERVICE_NAME} | awk -v ORS=',' '{print $1}')"
-    COUNT=$(echo CLUSTER_MEMBERS | tr ',' ' ' | wc -w)
+    COUNT=$(echo "$CLUSTER_MEMBERS" | tr ',' ' ' | wc -w)
     if [[ $COUNT -lt $(($CLUSTER_MINIMUM)) ]]; then
         echo "Waiting for at least $CLUSTER_MINIMUM IP addresses to resolve..." >&2
         SLEEPS=$((SLEEPS + 1))
         sleep 3
-    elif [[ "${NODE_ADDDRESS}" == "${CLUSTER_MEMBERS%,*}" ]]; then
+    elif [[ "${NODE_ADDDRESS%% *}" == ${CLUSTER_MEMBERS%%,*} ]]; then
         CLUSTER_ADDRESS="gcomm://$CLUSTER_MEMBERS"
     else
         CLUSTER_MEMBERS="${CLUSTER_MEMBERS%%,}" # strip trailing commas
@@ -49,4 +49,3 @@ done
 
 echo "Cluster address set to $CLUSTER_ADDRESS" >&2
 echo $CLUSTER_ADDRESS
-
