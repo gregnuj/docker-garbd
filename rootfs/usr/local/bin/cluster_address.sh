@@ -32,7 +32,7 @@ while [[ -z "$CLUSTER_ADDRESS" ]]; do
         SLEEPS=$((SLEEPS + 1))
         sleep 3
     elif [[ "${NODE_ADDRESS%% *}" == ${CLUSTER_MEMBERS%%,*} ]]; then
-        CLUSTER_ADDRESS="gcomm://$CLUSTER_MEMBERS"
+        CLUSTER_ADDRESS="gcomm://"
     else
         CLUSTER_MEMBERS="${CLUSTER_MEMBERS%%,}" # strip trailing commas
         CLUSTER_ADDRESS="gcomm://$CLUSTER_MEMBERS?pc.wait_prim=no"
