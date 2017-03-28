@@ -32,10 +32,11 @@ while [[ -z "$CLUSTER_ADDRESS" ]]; do
         SLEEPS=$((SLEEPS + 1))
         sleep 3
     elif [[ "${NODE_ADDDRESS}" == "${CLUSTER_MEMBERS%,*}" ]]; then
-        CLUSTER_ADDRESS="gcomm://"
+        CLUSTER_ADDRESS="gcomm://$CLUSTER_MEMBERS"
     else
         CLUSTER_MEMBERS="${CLUSTER_MEMBERS%%,}" # strip trailing commas
         CLUSTER_ADDRESS="gcomm://$CLUSTER_MEMBERS?pc.wait_prim=no"
+	sleep 10 # give primary a head start
     fi
 
     # After 90 seconds reduce CLUSTER_ADDRESS_MINIMUM
