@@ -31,7 +31,7 @@ while [[ -z "$CLUSTER_ADDRESS" ]]; do
         echo "Waiting for at least $CLUSTER_MINIMUM IP addresses to resolve..." >&2
         SLEEPS=$((SLEEPS + 1))
         sleep 3
-    elif [[ "${NODE_ADDDRESS%% *}" == ${CLUSTER_MEMBERS%%,*} ]]; then
+    elif [[ "${NODE_ADDRESS%% *}" == ${CLUSTER_MEMBERS%%,*} ]]; then
         CLUSTER_ADDRESS="gcomm://$CLUSTER_MEMBERS"
     else
         CLUSTER_MEMBERS="${CLUSTER_MEMBERS%%,}" # strip trailing commas
