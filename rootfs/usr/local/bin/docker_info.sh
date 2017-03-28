@@ -15,7 +15,7 @@ function service_hostname(){
     while [[ -z "$SERVICE_HOSTNAME" ]] ; do
         SERVICE_HOSTNAME="$(hostname -i | nslookup | awk -F'= ' 'NR==5 { print $2 }'| awk -F'.' '{print $1 "." $2}')"
         if [[ -z "$SERVICE_HOSTNAME" ]] ; then
-	    echo "Waiting for dns..." >> &2
+	    echo "Waiting for dns..." >&2
        	    sleep 1;
 	    LOOP=$((LOOP + 1));
         fi
