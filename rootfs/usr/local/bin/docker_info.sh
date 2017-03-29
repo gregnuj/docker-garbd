@@ -26,15 +26,15 @@ function service_hostname(){
 function service_name(){
     if [[ -z $SERVICE_NAME ]] ; then
         SERVICE_HOSTNAME="$(service_hostname)"
-        SERVICE_NAME="${SERVICE_NAME%%.*}"
+        SERVICE_NAME="${SERVICE_HOSTNAME%%.*}"
     fi
     echo "$SERVICE_NAME"
 }
 
 function service_instance(){
     if [[ -z $SERVICE_INSTANCE ]] ; then
-        SERVICE_NAME="$(service_name)"
-        SERVICE_INSTANCE="${SERVICE_NAME##*.}"
+        SERVICE_HOSTNAME="$(service_hostname)"
+        SERVICE_INSTANCE="${SERVICE_HOSTNAME##*.}"
     fi
     echo "$SERVICE_INSTANCE"
 }
@@ -48,7 +48,14 @@ function container_name(){
 }
 
 function node_address(){
-    NODE_ADDRESS="$(hostname -i)"
+    while [[ -z "$NODE_ADDRESS" ]] ; do
+        NODE_ADDRESS="$(hostname -i)"
+        if [[ -z "$NODE_ADDRESS" ]] ; then
+	    echo "Waiting for dns..." >&2
+       	    sleep 1;
+	    LOOP=$((LOOP + 1));
+        fi
+    done
     echo "$NODE_ADDRESS"
 }
 
