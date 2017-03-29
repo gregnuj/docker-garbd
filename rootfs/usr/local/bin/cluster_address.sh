@@ -27,6 +27,7 @@ fi
 while [[ -z "$CLUSTER_ADDRESS" ]]; do
     CLUSTER_MEMBERS="$(getent hosts tasks.${SERVICE_NAME} | awk -v ORS=',' '{print $1}')"
     COUNT=$(echo "$CLUSTER_MEMBERS" | tr ',' ' ' | wc -w)
+    echo "Found ($COUNT) members in ${SERVICE_NAME} ($CLUSTER_MEMBERS)" >&2
     if [[ $COUNT -lt $(($CLUSTER_MINIMUM)) ]]; then
         echo "Waiting for at least $CLUSTER_MINIMUM IP addresses to resolve..." >&2
         SLEEPS=$((SLEEPS + 1))
