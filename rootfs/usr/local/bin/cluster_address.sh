@@ -7,9 +7,6 @@ fi
 
 source docker_info.sh
 
-declare SERVICE_NAME="${SERVICE_NAME:="$(service_name)"}"
-declare SERVICE_INSTANCE="${SERVICE_INSTANCE:="$(service_instance)"}"
-declare NODE_ADDRESS="${NODE_ADDRESS:="$(node_address)"}"
 declare CLUSTER_MEMBERS="${CLUSTER_MEMBERS:=""}"
 declare CLUSTER_ADDRESS="${CLUSTER_ADDRESS:=""}"
 declare CLUSTER_MINIMUM="${CLUSTER_MINIMUM:="2"}"
@@ -25,8 +22,11 @@ fi
 # before trying to start. For example, this occurs when updated container images are being pulled
 # by `docker service update <service>` or on a full cluster power loss
 while [[ -z "$CLUSTER_ADDRESS" ]]; do
+    SERVICE_NAME="$(service_name)"
+    NODE_ADDRESS="$(node_address)"
     CLUSTER_MEMBERS="$(getent hosts tasks.${SERVICE_NAME} | awk -v ORS=',' '{print $1}')"
     COUNT=$(echo "$CLUSTER_MEMBERS" | tr ',' ' ' | wc -w)
+    echo "Found ($COUNT) members in ${SERVICE_NAME} ($CLUSTER_MEMBERS)" >&2
     if [[ $COUNT -lt $(($CLUSTER_MINIMUM)) ]]; then
         echo "Waiting for at least $CLUSTER_MINIMUM IP addresses to resolve..." >&2
         SLEEPS=$((SLEEPS + 1))
@@ -44,6 +44,10 @@ while [[ -z "$CLUSTER_ADDRESS" ]]; do
         SLEEPS=0
         CLUSTER_MINIMUM=$((CLUSTER_MINIMUM - 1))
         echo "Reducing CLUSTER_MINIMUM to $CLUSTER_MINIMUM" >&2
+    fi
+    if [[ $(($CLUSTER_MINIMUM)) -lt 2 ]]; then
+        echo "CLUSTER_MINIMUM is $CLUSTER_MINIMUM cannot continue" >&2
+        exit 1
     fi
 done
 
