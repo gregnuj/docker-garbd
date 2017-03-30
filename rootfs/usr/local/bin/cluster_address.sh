@@ -24,7 +24,7 @@ fi
 while [[ -z "$CLUSTER_ADDRESS" ]]; do
     SERVICE_NAME="$(service_name)"
     NODE_ADDRESS="$(node_address)"
-    CLUSTER_MEMBERS="$(getent hosts tasks.${SERVICE_NAME} | awk -v ORS=',' '{print $1}')"
+    CLUSTER_MEMBERS="$(getent hosts tasks.${SERVICE_NAME} | sort | awk -v ORS=',' '{print $1}')"
     COUNT=$(echo "$CLUSTER_MEMBERS" | tr ',' ' ' | wc -w)
     echo "Found ($COUNT) members in ${SERVICE_NAME} ($CLUSTER_MEMBERS)" >&2
     if [[ $COUNT -lt $(($CLUSTER_MINIMUM)) ]]; then
