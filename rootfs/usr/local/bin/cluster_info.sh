@@ -102,6 +102,17 @@ function cluster_weight(){
     echo $((CLUSTER_WEIGHT % 255))
 }
 
+function cluster_bootstrap(){
+    if [[ -f $(grastate_dat) ]]; then
+        CLUSTER_BOOTSTRAP=0
+    elif [[ $(cluster_primary) == $(node_address) ]]; then
+        CLUSTER_BOOTSTRAP=1
+    else
+        CLUSTER_BOOTSTRAP=0
+    fi
+    echo "$CLUSTER_BOOTSTRAP"
+}
+
 function main(){
     case "$1" in
         -a|--address)
