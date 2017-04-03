@@ -52,6 +52,7 @@ function cluster_sst_auth(){
 
 # discovered from docker_info.SERVICE_MEMBERS using CLUSTER_MINIMUM 
 function cluster_members(){
+    CLUSTER_MINIMUM=$(cluster_minimum)
     while [[ -z "${CLUSTER_MEMBERS}" ]]; do
        CURRENT_MEMBERS="$(service_members)"
        COUNT="$(service_count)"
