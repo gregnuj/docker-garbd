@@ -6,8 +6,6 @@ if [[ ! -z "$DEBUG" && "$DEBUG" != 0 && "${DEBUG^^}" != "FALSE" ]]; then
 fi
 
 source docker_info.sh
-declare MYSQL_DIR="$(mysql_dir)"
-declare MYSQL_ROOT_PASSWORD="${MYSQL_ROOT_PASSWORD:="$(mysql_password root)"}"
 
 # Defaults to /var/lib/mysql
 function mysql_dir(){

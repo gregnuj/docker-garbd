@@ -8,16 +8,6 @@ fi
 source docker_info.sh
 source mysql_info.sh
 
-declare GRASTATE_DAT="$(grastate_dat)"
-declare CLUSTER_NAME="$(cluster_name)"
-declare CLUSTER_USER="$(cluster_user)"
-declare CLUSTER_MEMBERS="$(cluster_members)"
-declare CLUSTER_MINIMUM="$(cluster_minimum)"
-declare CLUSTER_ADDRESS="$(cluster_address)"
-declare CLUSTER_SST_AUTH="$(cluster_sst_auth)"
-declare CLUSTER_SST_METHOD="$(cluster_sst_method)"
-declare CLUSTER_PRIMARY="$(cluster_primary)"
-
 # Defaults to servicename-cluster
 function cluster_name(){
     CLUSTER_NAME="${CLUSTER_NAME:="$(service_name)-cluster"}"
@@ -89,7 +79,7 @@ function cluster_members(){
 }
 
 # Defaults to first node in Cluster members
-function cluster_primaryt(){
+function cluster_primary(){
     if [[ -z "${CLUSTER_PRIMARY}" ]]; then
         echo "$(cluster_members)" | sort | awk -F ',' '{print $1}'
     fi
