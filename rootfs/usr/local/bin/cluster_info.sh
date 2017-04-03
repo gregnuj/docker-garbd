@@ -79,12 +79,27 @@ function cluster_members(){
     echo "${CLUSTER_MEMBERS}"
 }
 
-# Defaults to first node in Cluster members
+function cluster_mem_names(){
+    NAMES=()
+    FS=',' read -r -a members <<< "$(cluster_members)" 
+    for member in $members; do 
+        NAMES+="$(nslookup "$(member)" | awk -F'= ' 'NR==5 { print $2 }')"
+    done
+    echo "${NAMES[@]}"
+}
+
+# Defaults to lowest ip in Cluster members
 function cluster_primary(){
     if [[ -z "${CLUSTER_PRIMARY}" ]]; then
-        echo "$(cluster_members)" | sort | awk -F ',' '{print $1}'
+        CLUSTER_PRIMARY=$(echo "$(cluster_members)" | tr ',' '\n' | sort -r | tail -n 1)
     fi
     echo "${CLUSTER_PRIMARY}"
+}
+
+# Defaults 
+function cluster_weight(){
+    CLUSTER_WEIGHT=$(echo "$(cluster_members)" | tr ',' '\n' | sort -r | awk "/$(node_address)/ {print FNR}")
+    echo $((CLUSTER_WEIGHT % 255))
 }
 
 function main(){
@@ -118,6 +133,9 @@ function main(){
             ;;
         -u|--user)
             echo "$(cluster_user)"
+            ;;
+        -w|--weight)
+            echo "$(cluster_weight)"
             ;;
     esac
 }
