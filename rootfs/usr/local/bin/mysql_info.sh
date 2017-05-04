@@ -1,15 +1,16 @@
 #!/bin/bash -e
 
-# Set 'DEBUG=1' environment variable to see detailed output for debugging
-if [[ ! -z "$DEBUG" && "$DEBUG" != 0 && "${DEBUG^^}" != "FALSE" ]]; then
+if [[ -n "$DEBUG" ]]; then
   set -x
 fi
 
-source docker_info.sh
-
 # Defaults to /var/lib/mysql
-function mysql_dir(){
-    DATADIR="${DATADIR:="/var/lib/mysql"}"
+function mysql_datadir(){
+    if [[ -z "$1" ]]; then
+        DATADIR="${DATADIR:="/var/lib/mysql"}"
+    else
+        DATADIR="$1"
+    fi
     echo "${DATADIR}"
 }
 
@@ -20,10 +21,10 @@ function mysql_auth(){
 }
 
 function mysql_user(){
-    if [[ -n "$1" ]]; then
-        USER="$1"
-    else
+    if [[ -z "$1" ]]; then
         USER=${MYSQL_USER:="root"}
+    else
+        USER="$1"
     fi
     echo "$USER"
 }
@@ -47,12 +48,14 @@ function mysql_password(){
     echo "${PASSWORD}"
 }
 
-
-function mysql_admin(){
-    MYSQL_ADMIN=( mysql --protocol=socket --socket=/var/run/mysqld/mysqld.sock -hlocalhost )
-    MYSQL_ADMIN+=( -u"$(mysql_user root)" )
-    MYSQL_ADMIN+=( -p"$(mysql_password root)" )
-    echo "${MYSQL_ADMIN[@]}"
+function mysql_client(){
+    MYSQL_CLIENT=( "mysql" )
+    MYSQL_CLIENT+=( "--protocol=socket" )
+    MYSQL_CLIENT+=( "--socket=/var/run/mysqld/mysqld.sock" )
+    MYSQL_CLIENT+=( "-hlocalhost" )
+    MYSQL_CLIENT+=( "-u$(mysql_user root)" )
+    MYSQL_CLIENT+=( "-p$(mysql_password root)" )
+    echo "${MYSQL_CLIENT[@]}"
 }
 
 function main(){
@@ -61,7 +64,7 @@ function main(){
             echo "$(mysql_auth $2)"
             ;;
         -d|--dir)
-            echo "$(mysql_dir)"
+            echo "$(mysql_datadir $2)"
             ;;
         -p|--password)
             echo "$(mysql_password $2)"
