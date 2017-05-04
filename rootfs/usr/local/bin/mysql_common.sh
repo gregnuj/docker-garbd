@@ -1,32 +1,32 @@
 #!/bin/bash -e
+#
 
-if [[ -n "$DEBUG" ]]; then
-  set -x
-fi
+[[ -z "$DEBUG" ]] || set -x
 
-# Defaults to /var/lib/mysql
+declare MYSQL_CONFD="${MYSQL_CONFD:="/etc/mysql/conf.d"}"
+declare DATADIR="${DATADIR:="/var/lib/mysql"}"
+
 function mysql_datadir(){
-    if [[ -z "$1" ]]; then
-        DATADIR="${DATADIR:="/var/lib/mysql"}"
-    else
-        DATADIR="$1"
-    fi
-    echo "${DATADIR}"
+    echo "$DATADIR"
 }
 
-function mysql_auth(){
-    USER="$(mysql_user $1)"
-    PASSWORD="$(mysql_password $1)"
-    echo "$USER:$PASSWORD"
+function mysql_confd(){
+    mkdir -p "${MYSQL_CONFD}"
+    echo "$MYSQL_CONFD"
 }
 
 function mysql_user(){
-    if [[ -z "$1" ]]; then
-        USER=${MYSQL_USER:="root"}
-    else
+    if [[ -n "$1" ]]; then
         USER="$1"
+    else
+        USER=${MYSQL_USER:="root"}
     fi
     echo "$USER"
+}
+
+function wsrep_user(){
+    WSREP_USER="${WSREP_USER:="xtrabackup"}"
+    echo "$WSREP_USER"
 }
 
 function mysql_password(){
@@ -48,6 +48,14 @@ function mysql_password(){
     echo "${PASSWORD}"
 }
 
+function mysql_shutdown(){
+    MYSQL_SHUT=( "mysqladmin" )
+    MYSQL_SHUT+=( "shutdown" )
+    MYSQL_SHUT+=( "-u$(mysql_user root)" )
+    MYSQL_SHUT+=( "-p$(mysql_password root)" )
+    "${MYSQL_SHUT[@]}"
+}
+
 function mysql_client(){
     MYSQL_CLIENT=( "mysql" )
     MYSQL_CLIENT+=( "--protocol=socket" )
@@ -64,7 +72,7 @@ function main(){
             echo "$(mysql_auth $2)"
             ;;
         -d|--dir)
-            echo "$(mysql_datadir $2)"
+            echo "$(mysql_datadir)"
             ;;
         -p|--password)
             echo "$(mysql_password $2)"

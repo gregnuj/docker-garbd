@@ -1,5 +1,5 @@
 #!/bin/bash -e
-
+#
 # Set 'DEBUG=1' environment variable to see detailed output for debugging
 if [[ ! -z "$DEBUG" && "$DEBUG" != 0 && "${DEBUG^^}" != "FALSE" ]]; then
   set -x
@@ -53,7 +53,7 @@ function container_name(){
 }
 
 function service_members(){
-    SERVICE_MEMBERS="$(getent hosts tasks.$(service_name) | sort | awk -v ORS=',' '{print $1}')"
+    SERVICE_MEMBERS="$(getent hosts tasks.$(service_name) | sort -nt '.' -k 4 | awk -v ORS=',' '{print $1}')"
     echo "${SERVICE_MEMBERS%%,}" # strip trailing commas
 }
 

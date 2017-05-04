@@ -1,12 +1,14 @@
 #!/bin/bash -e
+#
 
-# Set 'DEBUG=1' environment variable to see detailed output for debugging
-if [[ -n "$DEBUG" ]]; then
-  set -x
-fi
+[[ -z "$DEBUG" ]] || set -x
 
-source docker_info.sh
-source mysql_info.sh
+source swarm_common.sh
+source mysql_common.sh
+
+declare CLUSTER_UUID="${CLUSTER_UUID:="00000000-0000-0000-0000-000000000000"}"
+declare CLUSTER_SEQNO="${CLUSTER_SEQNO:="-1"}"
+declare CLUSTER_STB="${CLUSTER_STB:="0"}"
 
 # Defaults to servicename-cluster
 function cluster_name(){
@@ -14,9 +16,20 @@ function cluster_name(){
     echo "${CLUSTER_NAME}"
 }
 
+# Defaults to galera_auto.cnf
+function cluster_cnf(){
+    CLUSTER_CNF="${CLUSTER_CNF:="$(mysql_confd)/galera_auto.cnf"}"
+    echo "${CLUSTER_CNF}"
+}
+
 # Defaults to /var/lib/mysql/grastate.dat
 function grastate_dat(){
-    GRASTATE_DAT="${GRASTATE_DAT:="$(mysql_dir)/grastate.dat"}"
+    GRASTATE_DAT="${GRASTATE_DAT:="$(mysql_datadir)/grastate.dat"}"
+    if [[ -f "$GRASTATE_DAT" ]]; then
+        CLUSTER_UUID="$(awk '/^uuid:/{print $2}' $GRASTATE_DAT)"
+        CLUSTER_STB="$(awk '/^safe_to_bootstrap:/{print $2}' $GRASTATE_DAT)"
+        CLUSTER_SEQNO="$(awk '/^seqno:/{print $2}' $GRASTATE_DAT)"
+    fi
     echo "${GRASTATE_DAT}"
 }
 
@@ -33,22 +46,28 @@ function cluster_address(){
 }
 
 #
-function cluster_user(){
-    CLUSTER_USER="${CLUSTER_USER:="xtrabackup"}"
-    echo "${CLUSTER_USER}"
-}
-
-#
 function cluster_sst_method(){
     CLUSTER_SST_METHOD="${CLUSTER_SST_METHOD:="xtrabackup-v2"}"
     echo "${CLUSTER_SST_METHOD}"
 }
 
+function wsrep_user(){
+    WSREP_USER="${WSREP_USER:="xtrabackup"}"
+    echo "${WSREP_USER}"
+}
+
+function wsrep_password(){
+    WSREP_PASSWORD="${WSREP_PASSWORD:="$(mysql_password "$(wsrep_user)")"}"
+    echo "${WSREP_PASSWORD}"
+}
+
 #
 function cluster_sst_auth(){
-    CLUSTER_SST_AUTH="${CLUSTER_SST_AUTH:="$(mysql_auth "$(cluster_user)")"}"
-    echo "${CLUSTER_SST_AUTH}"
+    WSREP_USER="$(wsrep_user)"
+    WSREP_PASSWORD="$(wsrep_password)"
+    echo "${WSREP_USER}:${WSREP_PASSWORD}"
 }
+
 
 # discovered from docker_info.SERVICE_MEMBERS using CLUSTER_MINIMUM 
 function cluster_members(){
@@ -68,7 +87,7 @@ function cluster_members(){
        # After 90 seconds reduce SERVICE_ADDRESS_MINIMUM
        if [[ $SLEEPS -ge 30 ]]; then
           SLEEPS=0
-          CLUSTER_MINIMUM=$((CLUSTER_MINIMUM - 1))
+          export CLUSTER_MINIMUM=$((CLUSTER_MINIMUM - 1))
           echo "Reducing CLUSTER_MINIMUM to $CLUSTER_MINIMUM" >&2
        fi
        if [[ $CLUSTER_MINIMUM -lt 2 ]]; then
@@ -96,21 +115,52 @@ function cluster_primary(){
     echo "${CLUSTER_PRIMARY}"
 }
 
+# This is primary
+function is_cluster_primary(){
+    if [[ "$(cluster_primary)" == "$(node_address)" ]]; then
+        echo "true"
+    else
+        echo ""
+    fi
+}
+
 # Defaults 
 function cluster_weight(){
     CLUSTER_WEIGHT=$(echo "$(cluster_members)" | tr ',' '\n' | sort -r | awk "/$(node_address)/ {print FNR}")
     echo $((CLUSTER_WEIGHT % 255))
 }
 
-function cluster_bootstrap(){
-    if [[ -f $(grastate_dat) ]]; then
-        CLUSTER_BOOTSTRAP=0
-    elif [[ $(cluster_primary) == $(node_address) ]]; then
-        CLUSTER_BOOTSTRAP=1
-    else
-        CLUSTER_BOOTSTRAP=0
+function cluster_seqno(){
+    if [[ -z "${CLUSTER_SEQNO}" ]]; then :
+        GRASTATE_DAT="$(grastate_dat)"
     fi
-    echo "$CLUSTER_BOOTSTRAP"
+    echo "$CLUSTER_SEQNO"
+}
+
+function cluster_uuid(){
+    if [[ -z "${CLUSTER_UUID}" ]]; then :
+        GRASTATE_DAT="$(grastate_dat)"
+    fi
+    echo "$CLUSTER_UUID"
+}
+
+function cluster_stb(){
+    if [[ -z "${CLUSTER_STB}" ]]; then 
+        GRASTATE_DAT="$(grastate_dat)"
+    fi
+    echo "$CLUSTER_STB"
+}
+
+function cluster_position(){
+    GRASTATE_DAT="$(grastate_dat)"
+    if [[ "$CLUSTER_UUID" == '00000000-0000-0000-0000-000000000000' ]]; then
+        CLUSTER_POSITION=""
+    elif [[ "$CLUSTER_SEQNO" == "-1" ]]; then
+        CLUSTER_POSITION=""
+    else
+    	CLUSTER_POSITION="$(cluster_uuid):$(cluster_seqno)"
+    fi
+    echo "$CLUSTER_POSITION" 
 }
 
 function main(){
@@ -120,9 +170,6 @@ function main(){
             ;;
         --auth)
             echo "$(cluster_sst_auth)"
-            ;;
-        -d|--dir)
-            echo "$(datadir)"
             ;;
         -f|--fqdn)
             echo "$(fqdn)"
@@ -143,7 +190,7 @@ function main(){
             echo "$(cluster_primary)"
             ;;
         -u|--user)
-            echo "$(cluster_user)"
+            echo "$(wsrep_user)"
             ;;
         -w|--weight)
             echo "$(cluster_weight)"
@@ -152,3 +199,5 @@ function main(){
 }
 
 main "$@"
+
+
