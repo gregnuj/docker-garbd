@@ -1,5 +1,4 @@
 #!/bin/bash -e
-#
 
 [[ -z "$DEBUG" ]] || set -x
 
@@ -24,11 +23,6 @@ function mysql_user(){
     echo "$USER"
 }
 
-function wsrep_user(){
-    WSREP_USER="${WSREP_USER:="xtrabackup"}"
-    echo "$WSREP_USER"
-}
-
 function mysql_password(){
     USER="$(mysql_user $1)"
     if [[ $USER == "root" ]]; then
@@ -38,7 +32,7 @@ function mysql_password(){
     fi
 
     if [[ -r "$PASSWORD" ]]; then
-        PASSWORD="$(cat "$PASSWORD")"        
+        PASSWORD="$(cat "$PASSWORD")"
     elif [[ -z "$PASSWORD" && -r "/var/run/secrets/$USER" ]]; then
         PASSWORD="$(cat "/var/run/secrets/${USER}")"
     elif [[ -z "$PASSWORD" ]]; then
@@ -64,6 +58,27 @@ function mysql_client(){
     MYSQL_CLIENT+=( "-u$(mysql_user root)" )
     MYSQL_CLIENT+=( "-p$(mysql_password root)" )
     echo "${MYSQL_CLIENT[@]}"
+}
+
+# Defaults to replication.cnf
+function replication_cnf(){
+    REPLICATION_CNF="${REPLICATION_CNF:="$(mysql_confd)/replication.cnf"}"
+    echo "${REPLICATION_CNF}"
+}
+
+function replication_master(){
+    REPLICATION_MASTER="${REPLICATION_MASTER:="master"}"
+    echo "$REPLICATION_MASTER"
+}
+
+function replication_user(){
+    REPLICATION_USER="${REPLICATION_USER:="replication"}"
+    echo "$REPLICATION_USER"
+}
+
+function replication_password(){
+    REPLICATION_PASSWORD="${REPLICATION_PASSWORD:="$(mysql_password "$(replication_user)")"}"
+    echo "$REPLICATION_PASSWORD"
 }
 
 function main(){
