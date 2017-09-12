@@ -1,90 +1,101 @@
 #!/bin/bash -e
-#
-# Set 'DEBUG=1' environment variable to see detailed output for debugging
-if [[ ! -z "$DEBUG" && "$DEBUG" != 0 && "${DEBUG^^}" != "FALSE" ]]; then
-  set -x
-fi
 
-function node_address(){
-    while [[ -z "$NODE_ADDRESS" ]] ; do
-        NODE_ADDRESS="$(hostname -i | awk '{print $1}')"
-        if [[ -z "$NODE_ADDRESS" ]] ; then
-	    echo "Waiting for dns..." >&2
-       	    sleep 1;
-	    LOOP=$((LOOP + 1));
-        fi
-    done
-    echo "$NODE_ADDRESS"
+[[ -z "$DEBUG" ]] || set -x
+
+declare MYSQL_CONFD="${MYSQL_CONFD:="/etc/mysql/conf.d"}"
+declare DATADIR="${DATADIR:="/var/lib/mysql"}"
+
+function mysql_datadir(){
+    echo "$DATADIR"
 }
 
-function fqdn(){
-    while [[ -z "$FQDN" && $LOOP -lt 30 ]] ; do
-        FQDN="$(nslookup "$(node_address)" | awk -F'= ' 'NR==5 { print $2 }')"
-        SERVICE_NAME="$(echo "$FQDN" | awk -F'.' '{print $1}')"
-        SERVICE_LOOKUP="$(getent hosts tasks.${SERVICE_NAME})"
-        if [[ -z "${SERVICE_LOOKUP}" ]]; then
-            FQDN=""
-        fi
-    done
-    echo "$FQDN"
+function mysql_confd(){
+    mkdir -p "${MYSQL_CONFD}"
+    echo "$MYSQL_CONFD"
 }
 
-function service_hostname(){
-    SERVICE_HOSTNAME="${SERVICE_NAME:="$(echo "$(fqdn)" | awk -F'.' '{print $1 "." $2}')"}"
-    echo "$SERVICE_HOSTNAME"
-}
-
-function service_name(){
-    SERVICE_NAME="${SERVICE_NAME:="$(echo "$(fqdn)" | awk -F'.' '{print $1}')"}"
-    echo "$SERVICE_NAME"
-}
-
-function service_instance(){
-    SERVICE_INSTANCE="${SERVICE_INSTANCE:="$(echo "$(fqdn)" | awk -F'.' '{print $2}')"}"
-    echo "$SERVICE_INSTANCE"
-}
-
-function container_name(){
-    if [[ -z $CONTAINER_NAME ]] ; then
-        SERVICE_NAME="$(service_name)"
-        CONTAINER_NAME="${SERVICE_NAME##*_}"
+function mysql_user(){
+    if [[ -n "$1" ]]; then
+        USER="$1"
+    else
+        USER=${MYSQL_USER:="root"}
     fi
-    echo "$CONTAINER_NAME"
+    echo "$USER"
 }
 
-function service_members(){
-    SERVICE_MEMBERS="$(getent hosts tasks.$(service_name) | cut -d ' ' -f 1 | while read ip; do nslookup $ip | awk -v "ip=$ip" '(NR == 5){print ip,$0}'; done | sort -k3 | awk -v 'ORS=,' '{print $1}')" 
-    SERVICE_MEMBERS="${SERVICE_MEMBERS%%,}" # strip trailing commas
-    echo "${SERVICE_MEMBERS}"
+function mysql_password(){
+    USER="$(mysql_user $1)"
+    if [[ $USER == "root" ]]; then
+        PASSWORD="${MYSQL_ROOT_PASSWORD:="${MYSQL_ROOT_PASSWORD_FILE}"}"
+    elif [[ $USER == "${MYSQL_USER}" ]]; then
+        PASSWORD="${MYSQL_PASSWORD:="${MYSQL_PASSWORD_FILE}"}"
+    fi
+
+    if [[ -r "$PASSWORD" ]]; then
+        PASSWORD="$(cat "$PASSWORD")"
+    elif [[ -z "$PASSWORD" && -r "/var/run/secrets/$USER" ]]; then
+        PASSWORD="$(cat "/var/run/secrets/${USER}")"
+    elif [[ -z "$PASSWORD" ]]; then
+        PASSWORD="$(echo "$USER:$MYSQL_ROOT_PASSWORD" | sha256sum | awk '{print $1}')"
+    fi
+
+    echo "${PASSWORD}"
 }
 
-function service_count(){
-    SERVICE_COUNT=$(echo "$(service_members)" | tr ',' ' ' | wc -w)
-    echo $SERVICE_COUNT
+function mysql_shutdown(){
+    MYSQL_SHUT=( "mysqladmin" )
+    MYSQL_SHUT+=( "shutdown" )
+    MYSQL_SHUT+=( "-u$(mysql_user root)" )
+    MYSQL_SHUT+=( "-p$(mysql_password root)" )
+    "${MYSQL_SHUT[@]}"
+}
+
+function mysql_client(){
+    MYSQL_CLIENT=( "mysql" )
+    MYSQL_CLIENT+=( "--protocol=socket" )
+    MYSQL_CLIENT+=( "--socket=/var/run/mysqld/mysqld.sock" )
+    MYSQL_CLIENT+=( "-hlocalhost" )
+    MYSQL_CLIENT+=( "-u$(mysql_user root)" )
+    MYSQL_CLIENT+=( "-p$(mysql_password root)" )
+    echo "${MYSQL_CLIENT[@]}"
+}
+
+# Defaults to replication.cnf
+function replication_cnf(){
+    REPLICATION_CNF="${REPLICATION_CNF:="$(mysql_confd)/replication.cnf"}"
+    echo "${REPLICATION_CNF}"
+}
+
+function replication_master(){
+    REPLICATION_MASTER="${REPLICATION_MASTER:="master"}"
+    echo "$REPLICATION_MASTER"
+}
+
+function replication_user(){
+    REPLICATION_USER="${REPLICATION_USER:="replication"}"
+    echo "$REPLICATION_USER"
+}
+
+function replication_password(){
+    REPLICATION_PASSWORD="${REPLICATION_PASSWORD:="$(mysql_password "$(replication_user)")"}"
+    echo "$REPLICATION_PASSWORD"
 }
 
 function main(){
     case "$1" in
-        -a|--address)
-	    echo "$(node_address)"
+        -a|--auth)
+            echo "$(mysql_auth $2)"
             ;;
-        -c|--container)
-	    echo "$(container_name)"
+        -d|--dir)
+            echo "$(mysql_datadir)"
             ;;
-        -i|--instance)
-	    echo "$(service_instance)"
+        -p|--password)
+            echo "$(mysql_password $2)"
             ;;
-        -f|--fqdn)
-	    echo "$(fqdn)"
-            ;;
-        -h|--hostname)
-	    echo "$(service_hostname)"
-            ;;
-        -s|--service)
-	    echo "$(service_name)"
+        -u|--user)
+            echo "$(mysql_user $2)"
             ;;
     esac
 }
 
 main "$@"
-
