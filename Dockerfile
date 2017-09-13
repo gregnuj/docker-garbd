@@ -7,7 +7,8 @@ RUN set -e \
     && apt-get install -y \
     --no-install-recommends \
     --no-install-suggests \
-    dnsutils python-software-properties software-properties-common \
+    dnsutils \
+    python-software-properties software-properties-common \
     && apt-key adv --keyserver keyserver.ubuntu.com --recv BC19DDBA \
     && add-apt-repository 'deb http://releases.galeracluster.com/ubuntu trusty main' \ 
     && apt-get update \
