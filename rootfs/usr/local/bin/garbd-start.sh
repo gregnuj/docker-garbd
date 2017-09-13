@@ -1,4 +1,4 @@
 #!/bin/bash -e
 
-source swarm_common.sh
-exec "/usr/bin/garbd" "-a" "$(cluster_address)" "-g" "$(cluster_name)"
+source galera_common.sh
+exec "/usr/bin/garbd" "-a" "$(wsrep_cluster_address)" "-g" "$(wsrep_cluster_name)"
