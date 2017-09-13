@@ -29,7 +29,7 @@ function wsrep_cluster_name(){
 
 # Defaults to 1
 function wsrep_cluster_minimum(){
-    WSREP_CLUSTER_MINIMUM="${CLUSTER_MINIMUM:="1"}"
+    WSREP_CLUSTER_MINIMUM="${WSREP_CLUSTER_MINIMUM:="1"}"
     echo $((WSREP_CLUSTER_MINIMUM))
 }
 
